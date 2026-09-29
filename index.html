@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Generador Carga PI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one working column — cabecera del proveedor, tabla de líneas, vista previa CSV y barra de exportación */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --surface-2: #eef1f4;
+  --fg: #16202b;
+  --muted: #5b6875;
+  --line: #d5dce3;
+  --accent: #0f5c8c;
+  --accent-fg: #ffffff;
+  --accent-soft: #e3eef6;
+  --danger: #b3261e;
+  --danger-soft: #fbe9e7;
+  --ok: #1e7a45;
+  --ok-soft: #e4f3ea;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1419; --surface: #171e26; --surface-2: #1d2630; --fg: #e3e9ef; --muted: #93a1ae;
+    --line: #2c3743; --accent: #5aa9dc; --accent-fg: #06121c; --accent-soft: #16303f;
+    --danger: #f08b80; --danger-soft: #3a1c1a; --ok: #6fcf97; --ok-soft: #173024; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1419; --surface: #171e26; --surface-2: #1d2630; --fg: #e3e9ef; --muted: #93a1ae;
+  --line: #2c3743; --accent: #5aa9dc; --accent-fg: #06121c; --accent-soft: #16303f;
+  --danger: #f08b80; --danger-soft: #3a1c1a; --ok: #6fcf97; --ok-soft: #173024; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 24px 120px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 62ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+h2 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .06em; }
+.hint { color: var(--muted); font-size: .85rem; margin: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 16px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field.wide { grid-column: span 2; }
+@media (max-width: 520px) { .field.wide { grid-column: auto; } }
+label { font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+label .req { color: var(--danger); }
+input, select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; width: 100%; min-width: 0; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input.mono { font-family: var(--font-mono); font-size: .92rem; }
+input.invalid, select.invalid { border-color: var(--danger); background: var(--danger-soft); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg label.opt { cursor: pointer; text-transform: none; letter-spacing: 0; font-size: .88rem; font-weight: 500; color: var(--fg); padding: 7px 12px; border: 1px solid var(--line); border-radius: 4px; font-family: var(--font-mono); background: var(--surface); }
+.seg input:checked + label.opt { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.seg input:focus-visible + label.opt { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg.invalid label.opt { border-color: var(--danger); }
+.otro { margin-top: 6px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+th { background: var(--surface-2); font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+td.n { width: 40px; color: var(--muted); font-family: var(--font-mono); font-size: .85rem; }
+td.sub-total, th.r { text-align: right; }
+td.sub-total { font-family: var(--font-mono); white-space: nowrap; }
+td.act { width: 44px; text-align: center; }
+tbody tr:last-child td { border-bottom: 0; }
+tfoot td { background: var(--surface-2); font-weight: 600; border-top: 1px solid var(--line); border-bottom: 0; }
+td input { padding: 6px 8px; }
+button { font: inherit; cursor: pointer; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 8px 14px; font-weight: 500; }
+button:hover { background: var(--surface-2); }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+button.icon { padding: 4px 8px; color: var(--muted); border-color: transparent; background: transparent; font-size: 1.1rem; line-height: 1; }
+button.icon:hover { color: var(--danger); background: var(--danger-soft); }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+pre.preview { margin: 0; font-family: var(--font-mono); font-size: .8rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 12px; overflow-x: auto; white-space: pre; }
+.errors { display: grid; gap: 4px; background: var(--danger-soft); color: var(--danger); border-radius: 4px; padding: 10px 12px; font-size: .88rem; }
+.errors ul { margin: 0; padding-left: 18px; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 5; }
+.bar-in { max-width: 1040px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.fname { font-family: var(--font-mono); font-size: .85rem; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.fname strong { color: var(--fg); font-weight: 500; }
+.toast { font-size: .88rem; padding: 6px 10px; border-radius: 4px; }
+.toast.ok { background: var(--ok-soft); color: var(--ok); }
+.toast.err { background: var(--danger-soft); color: var(--danger); }
+.badge { display: inline-block; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; background: var(--accent-soft); color: var(--accent); }
+.prov-info { font-size: .82rem; color: var(--muted); min-height: 1.2em; }
+.prov-info.found { color: var(--ok); font-weight: 500; }
+.prov-info.missing { color: var(--danger); }
+.db-status { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.db-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.db-status.ok .dot { background: var(--ok); }
+.db-status.err .dot { background: var(--danger); }
+button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: .82rem; }
+button.link:hover { background: none; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .9rem; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Generador Carga PI</h1>
+      <p class="sub">Completa los datos del proveedor una vez, agrega un producto por línea y exporta el CSV listo para cargar la orden de compra.</p>
+    </div>
+    <div class="row-actions">
+      <span class="badge" id="exampleBadge" hidden>Datos de ejemplo</span>
+      <span id="confirmClear" class="confirm" hidden>¿Borrar todo? <button type="button" id="clearYes">Sí, borrar</button><button type="button" id="clearNo">Cancelar</button></span>
+      <button type="button" id="clearBtn">Nuevo archivo</button>
+    </div>
+  </header>
+
+  <section class="panel" aria-labelledby="h-prov">
+    <div class="panel-head">
+      <h2 id="h-prov">Proveedor y condiciones</h2>
+      <p class="hint">Se repiten en todas las líneas del archivo.</p>
+    </div>
+    <div class="db-status" id="dbStatus"><span class="dot"></span><span id="dbText">Cargando lista de proveedores…</span><button type="button" class="link" id="dbReload">Actualizar lista</button></div>
+    <div class="grid">
+      <div class="field">
+        <label for="codProv">Código proveedor <span class="req">*</span></label>
+        <input id="codProv" class="mono" list="provList" autocomplete="off" placeholder="Escribe código o nombre">
+        <datalist id="provList"></datalist>
+        <span class="prov-info" id="provInfo"></span>
+      </div>
+      <div class="field">
+        <label for="nomProv">Nombre proveedor</label>
+        <input id="nomProv" autocomplete="off" placeholder="ej. ARMAS">
+      </div>
+      <div class="field">
+        <label for="incoterms">Incoterms <span class="req">*</span></label>
+        <input id="incoterms" class="mono" list="incotermsList" autocomplete="off">
+        <datalist id="incotermsList">
+          <option value="EXWORKS"></option><option value="FCA"></option><option value="FAS"></option><option value="FOB"></option>
+          <option value="CFR"></option><option value="CIF"></option><option value="CPT"></option><option value="CIP"></option>
+          <option value="DAP"></option><option value="DPU"></option><option value="DDP"></option>
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="fecha">Fecha actual <span class="req">*</span></label>
+        <input id="fecha" type="date">
+      </div>
+      <div class="field">
+        <label for="contacto">Contacto <span class="req">*</span></label>
+        <input id="contacto" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="email">Email contacto <span class="req">*</span></label>
+        <input id="email" type="email" autocomplete="off">
+      </div>
+      <div class="field wide">
+        <label id="lblVia">Vía de embarque <span class="req">*</span></label>
+        <div class="seg" id="via" role="radiogroup" aria-labelledby="lblVia">
+          <input type="radio" name="via" id="via-sea" value="SEAFRGHT"><label class="opt" for="via-sea">SEAFRGHT</label>
+          <input type="radio" name="via" id="via-air" value="AIRFRGHT"><label class="opt" for="via-air">AIRFRGHT</label>
+          <input type="radio" name="via" id="via-nac" value="NAC"><label class="opt" for="via-nac">NAC</label>
+        </div>
+      </div>
+      <div class="field wide">
+        <label id="lblMon">Moneda compra <span class="req">*</span></label>
+        <div class="seg" id="moneda" role="radiogroup" aria-labelledby="lblMon">
+          <input type="radio" name="moneda" id="m-usd" value="USD"><label class="opt" for="m-usd">USD</label>
+          <input type="radio" name="moneda" id="m-eur" value="EUR"><label class="opt" for="m-eur">EUR</label>
+          <input type="radio" name="moneda" id="m-aud" value="AUD"><label class="opt" for="m-aud">AUD</label>
+          <input type="radio" name="moneda" id="m-chp" value="CHP"><label class="opt" for="m-chp">CHP</label>
+          <input type="radio" name="moneda" id="m-otro" value="__otro"><label class="opt" for="m-otro">Otro</label>
+        </div>
+        <input id="monedaOtro" class="mono otro" placeholder="Código de moneda, ej. GBP" hidden autocomplete="off">
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-lin">
+    <div class="panel-head">
+      <h2 id="h-lin">Líneas de producto</h2>
+      <p class="hint">Puedes pegar desde Excel: columnas Código · Cantidad · Costo unitario.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Código producto *</th><th>Cantidad *</th><th>Costo unitario *</th><th class="r">Subtotal</th><th><span class="sr" hidden>Quitar</span></th></tr></thead>
+        <tbody id="rows"></tbody>
+        <tfoot><tr><td></td><td id="lineCount">0 líneas</td><td></td><td></td><td class="sub-total" id="grandTotal">0,00</td><td></td></tr></tfoot>
+      </table>
+    </div>
+    <div class="row-actions">
+      <button type="button" id="addRow">+ Agregar línea</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-prev">
+    <div class="panel-head">
+      <h2 id="h-prev">Vista previa del CSV</h2>
+      <p class="hint">Separador punto y coma, decimales con coma, codificación Windows-1252.</p>
+    </div>
+    <div class="errors" id="errors" hidden></div>
+    <pre class="preview" id="preview"></pre>
+    <div class="row-actions">
+      <button type="button" id="copyBtn">Copiar contenido</button>
+    </div>
+  </section>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="fname">Archivo: <strong id="fname"></strong></div>
+    <div class="row-actions">
+      <span id="toast" class="toast" hidden></span>
+      <button type="button" class="primary" id="exportBtn">Exportar CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ▼▼▼ CONFIGURACIÓN: pega aquí la URL de la aplicación web de Apps Script (termina en /exec) ▼▼▼
+const API_URL = "https://script.google.com/macros/s/AKfycbxCCdMEQKV8T8NTvmfvE2GmBcVBZgG6zn01XSihyJkCb7nAtn-pLzgpVIOEtY40PLCm/exec";
+// ▲▲▲ ─────────────────────────────────────────────────────────────────────────────────────── ▲▲▲
+(function () {
+  const HEADER = ["Código proveedor","Codigo producto","Cantidad","Incoterms","Contacto","Email contacto","Fecha actual","Via embarque","Modeda compra","Costo unitario"];
+  const STORE_KEY = "cargaPI.draft.v1";
+  const $ = (id) => document.getElementById(id);
+
+  const EXAMPLE = {
+    codProv: "", nomProv: "", incoterms: "", contacto: "", email: "",
+    via: "", moneda: "", monedaOtro: "",
+    lines: [{ cod: "", qty: "", cost: "" }], example: false
+  };
+
+  function todayISO() {
+    const d = new Date(); const p = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  function isoToCL(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return d + "-" + m + "-" + y; }
+  function isoToDots(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return d + "." + m + "." + y; }
+
+  // "1.234,56" / "1234.56" / "1,234.56" -> Number
+  function parseNum(s) {
+    s = String(s || "").trim().replace(/\s/g, "");
+    if (!s) return NaN;
+    const lc = s.lastIndexOf(","), ld = s.lastIndexOf(".");
+    if (lc > -1 && ld > -1) {
+      if (lc > ld) s = s.replace(/\./g, "").replace(",", ".");
+      else s = s.replace(/,/g, "");
+    } else if (lc > -1) {
+      s = s.replace(",", ".");
+    } else if (ld > -1 && (s.match(/\./g) || []).length > 1) {
+      s = s.replace(/\./g, "");
+    }
+    if (!/^-?\d*\.?\d+$/.test(s)) return NaN;
+    return Number(s);
+  }
+  // Number -> "358,72" (sin separador de miles, como el archivo original)
+  function fmtCSV(n) {
+    if (!isFinite(n)) return "";
+    let s = String(Math.round(n * 1e6) / 1e6);
+    if (s.includes("e")) s = n.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+    return s.replace(".", ",");
+  }
+  function fmtMoney(n) {
+    if (!isFinite(n)) return "—";
+    return n.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  const clean = (s) => String(s || "").replace(/[;\r\n]+/g, " ").trim();
+
+  let state = null;
+
+  function load() {
+    try { const raw = localStorage.getItem(STORE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+    return JSON.parse(JSON.stringify(EXAMPLE));
+  }
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
+
+  function fillHeader() {
+    ["codProv","nomProv","incoterms","contacto","email","monedaOtro"].forEach((k) => { $(k).value = state[k] || ""; });
+    $("fecha").value = state.fecha || todayISO();
+    document.querySelectorAll('input[name="via"]').forEach((r) => { r.checked = r.value === state.via; });
+    document.querySelectorAll('input[name="moneda"]').forEach((r) => { r.checked = r.value === state.moneda; });
+    $("monedaOtro").hidden = state.moneda !== "__otro";
+    $("exampleBadge").hidden = !state.example;
+  }
+
+  function renderRows() {
+    const tb = $("rows"); tb.innerHTML = "";
+    state.lines.forEach((ln, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="n">' + (i + 1) + '</td>' +
+        '<td><input class="mono" id="cod-' + i + '" data-k="cod" data-i="' + i + '" autocomplete="off" aria-label="Código producto línea ' + (i + 1) + '"></td>' +
+        '<td><input class="mono" id="qty-' + i + '" data-k="qty" data-i="' + i + '" inputmode="decimal" autocomplete="off" aria-label="Cantidad línea ' + (i + 1) + '"></td>' +
+        '<td><input class="mono" id="cost-' + i + '" data-k="cost" data-i="' + i + '" inputmode="decimal" autocomplete="off" aria-label="Costo unitario línea ' + (i + 1) + '"></td>' +
+        '<td class="sub-total" id="st-' + i + '"></td>' +
+        '<td class="act"><button type="button" class="icon" data-del="' + i + '" aria-label="Quitar línea ' + (i + 1) + '">×</button></td>';
+      tb.appendChild(tr);
+      tr.querySelector('[data-k="cod"]').value = ln.cod || "";
+      tr.querySelector('[data-k="qty"]').value = ln.qty || "";
+      tr.querySelector('[data-k="cost"]').value = ln.cost || "";
+    });
+    update();
+  }
+
+  function currency() {
+    if (state.moneda === "__otro") return clean(state.monedaOtro).toUpperCase();
+    return state.moneda || "";
+  }
+
+  function validate() {
+    const errs = []; const bad = new Set();
+    if (!clean(state.codProv)) { errs.push("Falta el código de proveedor."); bad.add("codProv"); }
+    if (!clean(state.incoterms)) { errs.push("Falta el Incoterm."); bad.add("incoterms"); }
+    if (!clean(state.contacto)) { errs.push("Falta el nombre de contacto."); bad.add("contacto"); }
+    const em = clean(state.email);
+    if (!em) { errs.push("Falta el email de contacto."); bad.add("email"); }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { errs.push("El email de contacto no tiene un formato válido."); bad.add("email"); }
+    if (!state.fecha) { errs.push("Falta la fecha."); bad.add("fecha"); }
+    if (!state.via) { errs.push("Elige la vía de embarque."); bad.add("via"); }
+    if (!currency()) { errs.push(state.moneda === "__otro" ? "Escribe el código de la otra moneda." : "Elige la moneda de compra."); bad.add(state.moneda === "__otro" ? "monedaOtro" : "moneda"); }
+    const used = state.lines.filter((l) => clean(l.cod) || clean(l.qty) || clean(l.cost));
+    if (!used.length) errs.push("Agrega al menos una línea de producto.");
+    state.lines.forEach((l, i) => {
+      if (!(clean(l.cod) || clean(l.qty) || clean(l.cost))) return;
+      const n = i + 1;
+      if (!clean(l.cod)) { errs.push("Línea " + n + ": falta el código de producto."); bad.add("cod-" + i); }
+      const q = parseNum(l.qty);
+      if (!(q > 0)) { errs.push("Línea " + n + ": la cantidad debe ser un número mayor que cero."); bad.add("qty-" + i); }
+      const c = parseNum(l.cost);
+      if (!(c >= 0)) { errs.push("Línea " + n + ": el costo unitario debe ser un número."); bad.add("cost-" + i); }
+    });
+    return { errs, bad };
+  }
+
+  function buildRows() {
+    const common = {
+      prov: clean(state.codProv), inc: clean(state.incoterms).toUpperCase(), con: clean(state.contacto),
+      em: clean(state.email), fecha: isoToCL(state.fecha), via: state.via || "", mon: currency()
+    };
+    return state.lines
+      .filter((l) => clean(l.cod) || clean(l.qty) || clean(l.cost))
+      .map((l) => [common.prov, clean(l.cod), fmtCSV(parseNum(l.qty)), common.inc, common.con, common.em, common.fecha, common.via, common.mon, fmtCSV(parseNum(l.cost))]);
+  }
+  function csvText() {
+    return [HEADER].concat(buildRows()).map((r) => r.join(";")).join("\r\n") + "\r\n";
+  }
+  function fileName() {
+    const nom = clean(state.nomProv).replace(/[\\/:*?"<>|]/g, "") || clean(state.codProv) || "PROVEEDOR";
+    return "PI PD " + nom.toUpperCase() + " " + isoToDots(state.fecha || todayISO()) + ".csv";
+  }
+
+  // Codificación Windows-1252 (formato del archivo original)
+  const CP1252_EXTRA = { 0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,0x017E:0x9E,0x0178:0x9F };
+  function toCP1252(str) {
+    const out = new Uint8Array(str.length); let j = 0;
+    for (const ch of str) {
+      const c = ch.codePointAt(0);
+      if (c < 0x80 || (c >= 0xA0 && c <= 0xFF)) out[j++] = c;
+      else if (CP1252_EXTRA[c] !== undefined) out[j++] = CP1252_EXTRA[c];
+      else out[j++] = 0x3F; // "?"
+    }
+    return out.slice(0, j);
+  }
+
+  function update() {
+    let total = 0; let count = 0;
+    state.lines.forEach((l, i) => {
+      const q = parseNum(l.qty), c = parseNum(l.cost);
+      const cell = $("st-" + i);
+      if (cell) cell.textContent = isFinite(q) && isFinite(c) ? fmtMoney(q * c) : "—";
+      if (isFinite(q) && isFinite(c)) total += q * c;
+      if (clean(l.cod) || clean(l.qty) || clean(l.cost)) count++;
+    });
+    const cur = currency();
+    $("grandTotal").textContent = (cur ? cur + " " : "") + fmtMoney(total);
+    $("lineCount").textContent = count + (count === 1 ? " línea" : " líneas");
+    $("preview").textContent = csvText().replace(/\r\n$/, "");
+    $("fname").textContent = fileName();
+    save();
+  }
+
+  let showErrors = false;
+  function paintErrors() {
+    const { errs, bad } = validate();
+    document.querySelectorAll(".invalid").forEach((el) => el.classList.remove("invalid"));
+    const box = $("errors");
+    if (!showErrors || !errs.length) { box.hidden = true; return errs; }
+    bad.forEach((id) => { const el = $(id); if (el) el.classList.add("invalid"); });
+    box.innerHTML = "<strong>Revisa antes de exportar:</strong><ul></ul>";
+    const ul = box.querySelector("ul");
+    errs.forEach((e) => { const li = document.createElement("li"); li.textContent = e; ul.appendChild(li); });
+    box.hidden = false;
+    return errs;
+  }
+
+  function markEdited() { if (state.example) { state.example = false; $("exampleBadge").hidden = true; } }
+
+  // Cabecera
+  ["nomProv","incoterms","contacto","email","monedaOtro"].forEach((k) => {
+    $(k).addEventListener("input", (e) => { state[k] = e.target.value; markEdited(); update(); paintErrors(); });
+  });
+  $("codProv").addEventListener("input", (e) => {
+    state.codProv = e.target.value; markEdited(); lookupProvider(true); update(); paintErrors();
+  });
+  $("codProv").addEventListener("change", () => { lookupProvider(true); update(); paintErrors(); });
+
+  // ── Lista de proveedores desde Google Sheet ──
+  const CACHE_KEY = "cargaPI.proveedores.v1";
+  let proveedores = [];
+  let byCode = new Map();
+  let lastApplied = null;
+  const normTxt = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+
+  function setProviders(list) {
+    proveedores = Array.isArray(list) ? list : [];
+    byCode = new Map(proveedores.map((p) => [String(p.codigo).trim(), p]));
+    const dl = $("provList"); dl.innerHTML = "";
+    proveedores.forEach((p) => {
+      const o = document.createElement("option");
+      o.value = p.codigo; o.label = p.nombre || ""; o.textContent = p.nombre || "";
+      dl.appendChild(o);
+    });
+    lookupProvider(false);
+  }
+
+  function setDbStatus(kind, text) {
+    $("dbStatus").className = "db-status " + kind; $("dbText").textContent = text;
+  }
+
+  function applyProvider(p) {
+    state.nomProv = p.nombre || state.nomProv;
+    if (p.contacto) state.contacto = p.contacto;
+    if (p.email) state.email = p.email;
+    if (p.incoterms) state.incoterms = p.incoterms.toUpperCase();
+    const via = String(p.via || "").toUpperCase().trim();
+    if (["SEAFRGHT", "AIRFRGHT", "NAC"].includes(via)) state.via = via;
+    const mon = String(p.moneda || "").toUpperCase().trim();
+    if (mon) {
+      if (["USD", "EUR", "AUD", "CHP"].includes(mon)) { state.moneda = mon; state.monedaOtro = ""; }
+      else { state.moneda = "__otro"; state.monedaOtro = mon; }
+    }
+    const keep = state.codProv;
+    fillHeader();
+    $("codProv").value = keep;
+  }
+
+  // Busca el proveedor por código (o por nombre exacto) y rellena la cabecera
+  function lookupProvider(apply) {
+    const info = $("provInfo");
+    let code = clean(state.codProv);
+    if (!code) { info.textContent = ""; info.className = "prov-info"; lastApplied = null; return; }
+    let p = byCode.get(code);
+    if (!p && proveedores.length) {
+      const byName = proveedores.filter((x) => normTxt(x.nombre) === normTxt(code));
+      if (byName.length === 1) { p = byName[0]; state.codProv = p.codigo; $("codProv").value = p.codigo; code = p.codigo; }
+    }
+    if (p) {
+      info.textContent = "✓ " + (p.nombre || "Proveedor encontrado");
+      info.className = "prov-info found";
+      if (apply && lastApplied !== code) { lastApplied = code; applyProvider(p); }
+    } else {
+      lastApplied = null;
+      info.textContent = proveedores.length ? "Código no encontrado en la lista. Puedes completarlo a mano." : "";
+      info.className = "prov-info" + (proveedores.length ? " missing" : "");
+    }
+  }
+
+  async function loadProviders() {
+    if (!API_URL || API_URL.indexOf("PEGAR_AQUI") === 0) {
+      setDbStatus("err", "Falta configurar la URL de Apps Script (API_URL en index.html).");
+      return;
+    }
+    setDbStatus("", "Cargando lista de proveedores…");
+    try {
+      const res = await fetch(API_URL, { redirect: "follow" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Respuesta inválida");
+      setProviders(data.proveedores);
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(data.proveedores)); } catch (e) {}
+      setDbStatus("ok", data.proveedores.length + " proveedores cargados desde Google Sheets");
+    } catch (err) {
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch (e) {}
+      if (cached && cached.length) {
+        setProviders(cached);
+        setDbStatus("err", "No se pudo conectar con Google Sheets. Usando la última lista guardada (" + cached.length + " proveedores).");
+      } else {
+        setDbStatus("err", "No se pudo cargar la lista de proveedores. Revisa la URL y los permisos de la aplicación web.");
+      }
+    }
+  }
+  $("dbReload").addEventListener("click", loadProviders);
+  $("fecha").addEventListener("input", (e) => { state.fecha = e.target.value; markEdited(); update(); paintErrors(); });
+  document.querySelectorAll('input[name="via"]').forEach((r) => r.addEventListener("change", () => { state.via = r.value; markEdited(); update(); paintErrors(); }));
+  document.querySelectorAll('input[name="moneda"]').forEach((r) => r.addEventListener("change", () => {
+    state.moneda = r.value; $("monedaOtro").hidden = r.value !== "__otro";
+    if (r.value === "__otro") $("monedaOtro").focus();
+    markEdited(); update(); paintErrors();
+  }));
+
+  // Líneas
+  $("rows").addEventListener("input", (e) => {
+    const t = e.target; if (!t.dataset.k) return;
+    state.lines[+t.dataset.i][t.dataset.k] = t.value; markEdited(); update(); paintErrors();
+  });
+  $("rows").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-del]"); if (!b) return;
+    state.lines.splice(+b.dataset.del, 1);
+    if (!state.lines.length) state.lines.push({ cod: "", qty: "", cost: "" });
+    markEdited(); renderRows(); paintErrors();
+  });
+  $("rows").addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (e.key === "Enter" && t.dataset.k) {
+      e.preventDefault();
+      const i = +t.dataset.i;
+      if (i === state.lines.length - 1) { state.lines.push({ cod: "", qty: "", cost: "" }); renderRows(); }
+      const nx = $("cod-" + (i + 1)); if (nx) nx.focus();
+    }
+  });
+  // Pegar desde Excel
+  $("rows").addEventListener("paste", (e) => {
+    const t = e.target; if (!t.dataset.k) return;
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    if (!/[\t\n]/.test(text.trim())) return;
+    e.preventDefault();
+    const rows = text.replace(/\r/g, "").split("\n").filter((r) => r.trim() !== "");
+    const cols = ["cod", "qty", "cost"];
+    const startCol = cols.indexOf(t.dataset.k);
+    let i = +t.dataset.i;
+    rows.forEach((r) => {
+      const cells = r.split("\t");
+      if (!state.lines[i]) state.lines.push({ cod: "", qty: "", cost: "" });
+      cells.forEach((v, c) => { const k = cols[startCol + c]; if (k) state.lines[i][k] = v.trim(); });
+      i++;
+    });
+    markEdited(); renderRows(); paintErrors();
+  });
+  $("addRow").addEventListener("click", () => {
+    state.lines.push({ cod: "", qty: "", cost: "" }); renderRows();
+    $("cod-" + (state.lines.length - 1)).focus();
+  });
+
+  // Nuevo archivo
+  $("clearBtn").addEventListener("click", () => { $("confirmClear").hidden = false; $("clearBtn").hidden = true; });
+  $("clearNo").addEventListener("click", () => { $("confirmClear").hidden = true; $("clearBtn").hidden = false; });
+  $("clearYes").addEventListener("click", () => {
+    state = { codProv: "", nomProv: "", incoterms: "", contacto: "", email: "", fecha: todayISO(), via: "", moneda: "", monedaOtro: "", lines: [{ cod: "", qty: "", cost: "" }], example: false };
+    showErrors = false; $("confirmClear").hidden = true; $("clearBtn").hidden = false;
+    lastApplied = null; fillHeader(); renderRows(); lookupProvider(false); paintErrors(); $("codProv").focus();
+  });
+
+  function toast(msg, kind) {
+    const t = $("toast"); t.textContent = msg; t.className = "toast " + kind; t.hidden = false;
+    clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 5000);
+  }
+
+  $("copyBtn").addEventListener("click", () => {
+    const txt = csvText();
+    const done = () => toast("Contenido copiado", "ok");
+    const fallback = () => {
+      const r = document.createRange(); r.selectNodeContents($("preview"));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      toast("Texto seleccionado: usa Ctrl+C para copiar", "ok");
+    };
+    try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  let downloads = null;
+  $("exportBtn").addEventListener("click", async () => {
+    showErrors = true;
+    const errs = paintErrors();
+    if (errs.length) { toast("Corrige los campos marcados", "err"); $("errors").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const bytes = toCP1252(csvText());
+    if (!downloads && window.claude && window.claude.use) { try { downloads = await window.claude.use("downloads"); } catch (e) {} }
+    if (downloads) {
+      try {
+        await downloads.save({ filename: fileName(), data: bytes });
+        toast("Archivo exportado", "ok");
+      } catch (err) {
+        const code = err && err.code;
+        if (code === "declined") toast("Exportación cancelada", "err");
+        else if (code === "rate_limited") toast("Ya hay una descarga pendiente de confirmar", "err");
+        else toast("No se pudo exportar aquí. Usa “Copiar contenido”.", "err");
+      }
+      return;
+    }
+    // Fuera del visor de Claude (archivo abierto directamente en el navegador)
+    try {
+      const blob = new Blob([bytes], { type: "text/csv;charset=windows-1252" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName();
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast("Archivo exportado", "ok");
+    } catch (e) { toast("No se pudo exportar aquí. Usa “Copiar contenido”.", "err"); }
+  });
+
+  state = load();
+  if (!state.fecha) state.fecha = todayISO();
+  if (!state.lines || !state.lines.length) state.lines = [{ cod: "", qty: "", cost: "" }];
+  fillHeader(); renderRows();
+  loadProviders();
+  if (window.claude && window.claude.use) { window.claude.use("downloads").then((d) => { downloads = d; }).catch(() => {}); }
+})();
+</script>
+</body>
+</html>
