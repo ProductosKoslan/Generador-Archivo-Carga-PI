@@ -475,31 +475,49 @@ const API_URL = "https://script.google.com/macros/s/AKfycbxCCdMEQKV8T8NTvmfvE2Gm
     }
   }
 
-  async function loadProviders() {
+  // Muestra al instante la lista guardada en este navegador y la actualiza en segundo plano.
+  let loading = false;
+  async function loadProviders(forzar) {
     if (!API_URL || API_URL.indexOf("PEGAR_AQUI") === 0) {
       setDbStatus("err", "Falta configurar la URL de Apps Script (API_URL en index.html).");
       return;
     }
-    setDbStatus("", "Cargando lista de proveedores…");
+    if (loading) return;
+    loading = true;
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch (e) {}
+    const hasCache = cached && cached.length;
+    if (hasCache && !proveedores.length) setProviders(cached);
+    setDbStatus(hasCache ? "ok" : "", hasCache
+      ? cached.length + " proveedores disponibles · actualizando desde Google Sheets…"
+      : "Cargando lista de proveedores…");
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 45000);
+    const t0 = performance.now();
     try {
-      const res = await fetch(API_URL, { redirect: "follow" });
+      const url = API_URL + (forzar === true ? (API_URL.includes("?") ? "&" : "?") + "refresh=1" : "");
+      const res = await fetch(url, { redirect: "follow", signal: ctrl.signal });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Respuesta inválida");
       setProviders(data.proveedores);
       try { localStorage.setItem(CACHE_KEY, JSON.stringify(data.proveedores)); } catch (e) {}
-      setDbStatus("ok", data.proveedores.length + " proveedores cargados desde Google Sheets");
+      const seg = ((performance.now() - t0) / 1000).toFixed(1);
+      setDbStatus("ok", data.proveedores.length + " proveedores cargados desde Google Sheets (" + seg + " s)");
     } catch (err) {
-      let cached = null;
-      try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch (e) {}
-      if (cached && cached.length) {
-        setProviders(cached);
+      if (hasCache) {
         setDbStatus("err", "No se pudo conectar con Google Sheets. Usando la última lista guardada (" + cached.length + " proveedores).");
       } else {
-        setDbStatus("err", "No se pudo cargar la lista de proveedores. Revisa la URL y los permisos de la aplicación web.");
+        const msg = err && err.name === "AbortError"
+          ? "Google Sheets no respondió en 45 s. Pincha “Actualizar lista” para reintentar."
+          : "No se pudo cargar la lista de proveedores. " + ((err && err.message) || "Revisa la URL y los permisos de la aplicación web.");
+        setDbStatus("err", msg);
       }
+    } finally {
+      clearTimeout(timer); loading = false;
     }
   }
-  $("dbReload").addEventListener("click", loadProviders);
+  $("dbReload").addEventListener("click", () => loadProviders(true));
   $("fecha").addEventListener("input", (e) => { state.fecha = e.target.value; markEdited(); update(); paintErrors(); });
   document.querySelectorAll('input[name="via"]').forEach((r) => r.addEventListener("change", () => { state.via = r.value; markEdited(); update(); paintErrors(); }));
   document.querySelectorAll('input[name="moneda"]').forEach((r) => r.addEventListener("change", () => {
